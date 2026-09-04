@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 from pathlib import Path
@@ -9,6 +10,10 @@ from urllib.parse import urljoin
 
 from httpx import AsyncClient
 from stac_crawler.models import CatalogOrCollection, catalog_or_collection, Item, STACObject
+
+
+REQUEST_WAIT_SECONDS = 0.1
+"""How long to wait before requests"""
 
 
 class CrawlException(Exception):
@@ -77,6 +82,7 @@ async def download_and_rewrite_catalog(source_catalog_url: str, source_root_cata
     if os.path.isfile(destination_path):
         print(f"skipping {source_catalog_url}")
         # TODO: Actually skip
+    asyncio.sleep(REQUEST_WAIT_SECONDS)
     async with AsyncClient() as client:
         response = await client.get(urljoin(source_root_catalog_url, source_catalog_url))
     catalog: CatalogOrCollection = catalog_or_collection.validate_python(response.json())
@@ -91,6 +97,7 @@ async def download_and_rewrite_item(source_item_url: str, source_root_catalog_ur
     if os.path.isfile(destination_path):
         print(f"skipping {destination_path}")
         # TODO: Actually skip
+    asyncio.sleep(REQUEST_WAIT_SECONDS)
     async with AsyncClient() as client:
         response = await client.get(source_item_url)
     item: Item = Item.model_validate(response.json())
