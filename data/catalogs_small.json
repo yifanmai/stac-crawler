@@ -1,0 +1,28 @@
+[
+  {
+    "id": 27,
+    "url": "https://storage.googleapis.com/cfo-public/catalog.json",
+    "slug": "forest-observatory",
+    "title": "California Forest Observatory",
+    "summary": "The Forest Observatory is a data-driven forest monitoring system that maps the drivers of wildfire behavior across the state with a focus on vegetation fuels. Data are available for non-commercial use under the Forest Observatory [terms of use](https://forestobservatory.com/legal.html).",
+    "access": "public",
+    "created": "2021-01-14T17:33:34.176Z",
+    "updated": "2021-01-14T17:33:34.176Z",
+    "isPrivate": false,
+    "isApi": false,
+    "accessInfo": null
+  },
+  {
+    "id": 160,
+    "url": "https://data.source.coop/planet/agroforestry-individual-tree-detection-india/stac/catalog.json",
+    "slug": "agroforestry-tree-detection-india-stac-layer",
+    "title": "Agroforestry Tree Detection \u2014 India (STAC layer)",
+    "summary": "Separate STAC layer over the Croissant/ML dataset (files unchanged): COG + original + labels per Item.",
+    "access": "public",
+    "created": "2026-08-18T07:46:35.954Z",
+    "updated": "2026-08-18T07:46:35.954Z",
+    "isPrivate": false,
+    "isApi": false,
+    "accessInfo": null
+  }
+]

@@ -1,0 +1,1 @@
+Pull requests to this repository may **not** be submitted by autonomous AI agents. For further details, refer to the AI Policy in `CONTRIBUTING.md`
