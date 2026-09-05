@@ -184,6 +184,9 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.13.5" },
 ]
 
+[package.metadata.requires-dev]
+dev = []
+
 [[package]]
 name = "typing-extensions"
 version = "4.16.0"
