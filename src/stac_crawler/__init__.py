@@ -1,18 +1,17 @@
+import logging
 
 
 import asyncio
 
-from httpx import AsyncClient
-from stac_crawler.crawl import crawl_root_stac_recursively
-from stac_crawler.workers import crawl_catalogs_in_index
+from stac_crawler.workers import run_crawl_workers
 
-ROOT_CATALOG_URL = "https://storage.googleapis.com/cfo-public/catalog.json"
-
+STAC_CATALOGS_OUTPUT_PATH = "./output/stac_catalogs/"
+CATALOG_INDEX_PATH = "./data/catalogs.json"
 
 async def main() -> None:
-    # await crawl_catalogs_in_index(num_workers=4)
-    response = await crawl_root_stac_recursively(ROOT_CATALOG_URL, "/home/yifanmai/oss/stac-crawler/output/cfo-public/catalog.json")
-    print(response)
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger("httpx").setLevel(level=logging.WARNING)
+    await run_crawl_workers(CATALOG_INDEX_PATH, STAC_CATALOGS_OUTPUT_PATH, num_workers=8)
 
 if __name__ == "__main__":
     asyncio.run(main())

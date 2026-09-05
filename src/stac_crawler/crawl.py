@@ -1,3 +1,4 @@
+import logging
 import asyncio
 import json
 import os
@@ -10,6 +11,9 @@ from urllib.parse import urljoin
 
 from httpx import AsyncClient
 from stac_crawler.models import CatalogOrCollection, catalog_or_collection, Item, STACObject
+
+
+logger = logging.getLogger(__name__)
 
 
 REQUEST_WAIT_SECONDS = 0.2
@@ -91,13 +95,13 @@ async def download_and_rewrite_catalog(source_catalog_url: str, source_root_cata
         raise ValueError(f"{source_catalog_url} was not an absolute URL")
     destination_path = get_destination_path(source_catalog_url, source_root_catalog_url, destination_root_catalog_path)
     if os.path.isfile(destination_path):
-        print(f"skipping {source_catalog_url}")
+        logger.info(f"skipping {source_catalog_url}")
         with open(destination_path, "r") as destination_file:
             file_json = json.load(destination_file)
             return catalog_or_collection.validate_python(file_json)
     await asyncio.sleep(REQUEST_WAIT_SECONDS)
     async with AsyncClient() as client:
-        print(f"downloading {source_catalog_url}")
+        logger.info(f"downloading {source_catalog_url}")
         response = await client.get(urljoin(source_root_catalog_url, source_catalog_url))
     catalog = catalog_or_collection.validate_python(response.json())
     rewrite_links(catalog, source_catalog_url)
@@ -112,13 +116,13 @@ async def download_and_rewrite_item(source_item_url: str, source_root_catalog_ur
         raise ValueError(f"{source_item_url} was not an absolute URL")
     destination_path = get_destination_path(source_item_url, source_root_catalog_url, destination_root_catalog_path)
     if os.path.isfile(destination_path):
-        print(f"skipping {source_item_url}")
+        # logger.info(f"skipping {source_item_url}")
         with open(destination_path, "r") as destination_file:
             file_json = json.load(destination_file)
             return Item.model_validate(file_json)
     await asyncio.sleep(REQUEST_WAIT_SECONDS)
     async with AsyncClient() as client:
-        print(f"downloading {source_item_url}")
+        # logger.info(f"downloading {source_item_url}")
         response = await client.get(source_item_url)
     item = Item.model_validate(response.json())
     rewrite_links(item, source_item_url)
