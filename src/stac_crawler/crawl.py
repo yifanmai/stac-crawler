@@ -12,12 +12,18 @@ from httpx import AsyncClient
 from stac_crawler.models import CatalogOrCollection, catalog_or_collection, Item, STACObject
 
 
-REQUEST_WAIT_SECONDS = 0.1
+REQUEST_WAIT_SECONDS = 0.2
 """How long to wait before requests"""
 
 
 class CrawlException(Exception):
     pass
+
+
+
+def is_absolute_url(url: str) -> bool:
+    parsed_url = urlparse(url)
+    return bool(parsed_url.scheme) and bool(parsed_url.netloc)
 
 
 def write_json(obj: Dict, file_path: str):
@@ -56,18 +62,20 @@ def to_relative_url(target_url: str, base_url: str) -> str:
 def to_absolute_url(target_url: str, base_url: str) -> str:
     """Return target URL as an absolute URL, resolving it using the base URL if necessary"""
     # Parse URLs
-    parsed_target_url = urlparse(target_url)
     base_dir_url = (
         base_url if base_url.endswith("/") else 
         "/".join(base_url.split("/")[:-1]) + "/"
     )
     parsed_base_url = urlparse(base_dir_url)
+
     # If target_url is already an absolute URL, return it
-    if parsed_target_url.scheme and parsed_target_url.netloc:
+    if is_absolute_url(target_url):
         return target_url
+
     # Check that base URL is absolute
-    if not parsed_base_url.scheme or not parsed_base_url.netloc:
+    if not is_absolute_url(base_url):
         raise ValueError(f"Base URL {base_url} was not absolute")
+    
     return urljoin(base_dir_url, target_url)
 
 
@@ -79,15 +87,17 @@ def get_destination_path(source_object_url: str, source_root_catalog_url: str, d
 
 async def download_and_rewrite_catalog(source_catalog_url: str, source_root_catalog_url: str, destination_root_catalog_path: str) -> CatalogOrCollection:
     catalog: CatalogOrCollection
+    if not is_absolute_url(source_catalog_url):
+        raise ValueError(f"{source_catalog_url} was not an absolute URL")
     destination_path = get_destination_path(source_catalog_url, source_root_catalog_url, destination_root_catalog_path)
     if os.path.isfile(destination_path):
         print(f"skipping {source_catalog_url}")
         with open(destination_path, "r") as destination_file:
             file_json = json.load(destination_file)
             return catalog_or_collection.validate_python(file_json)
-        # TODO: Actually skip
-    asyncio.sleep(REQUEST_WAIT_SECONDS)
+    await asyncio.sleep(REQUEST_WAIT_SECONDS)
     async with AsyncClient() as client:
+        print(f"downloading {source_catalog_url}")
         response = await client.get(urljoin(source_root_catalog_url, source_catalog_url))
     catalog = catalog_or_collection.validate_python(response.json())
     rewrite_links(catalog, source_catalog_url)
@@ -98,14 +108,17 @@ async def download_and_rewrite_catalog(source_catalog_url: str, source_root_cata
 
 async def download_and_rewrite_item(source_item_url: str, source_root_catalog_url: str, destination_root_catalog_path: str) -> Item:
     item: Item
+    if not is_absolute_url(source_item_url):
+        raise ValueError(f"{source_item_url} was not an absolute URL")
     destination_path = get_destination_path(source_item_url, source_root_catalog_url, destination_root_catalog_path)
     if os.path.isfile(destination_path):
-        print(f"skipping {destination_path}")
+        print(f"skipping {source_item_url}")
         with open(destination_path, "r") as destination_file:
             file_json = json.load(destination_file)
             return Item.model_validate(file_json)
-    asyncio.sleep(REQUEST_WAIT_SECONDS)
+    await asyncio.sleep(REQUEST_WAIT_SECONDS)
     async with AsyncClient() as client:
+        print(f"downloading {source_item_url}")
         response = await client.get(source_item_url)
     item = Item.model_validate(response.json())
     rewrite_links(item, source_item_url)
