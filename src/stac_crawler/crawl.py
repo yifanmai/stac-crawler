@@ -78,14 +78,18 @@ def get_destination_path(source_object_url: str, source_root_catalog_url: str, d
     
 
 async def download_and_rewrite_catalog(source_catalog_url: str, source_root_catalog_url: str, destination_root_catalog_path: str) -> CatalogOrCollection:
+    catalog: CatalogOrCollection
     destination_path = get_destination_path(source_catalog_url, source_root_catalog_url, destination_root_catalog_path)
     if os.path.isfile(destination_path):
         print(f"skipping {source_catalog_url}")
+        with open(destination_path, "r") as destination_file:
+            file_json = json.load(destination_file)
+            return catalog_or_collection.validate_python(file_json)
         # TODO: Actually skip
     asyncio.sleep(REQUEST_WAIT_SECONDS)
     async with AsyncClient() as client:
         response = await client.get(urljoin(source_root_catalog_url, source_catalog_url))
-    catalog: CatalogOrCollection = catalog_or_collection.validate_python(response.json())
+    catalog = catalog_or_collection.validate_python(response.json())
     rewrite_links(catalog, source_catalog_url)
     write_json(catalog.model_dump(), destination_path)
     return catalog
@@ -93,14 +97,17 @@ async def download_and_rewrite_catalog(source_catalog_url: str, source_root_cata
 
 
 async def download_and_rewrite_item(source_item_url: str, source_root_catalog_url: str, destination_root_catalog_path: str) -> Item:
+    item: Item
     destination_path = get_destination_path(source_item_url, source_root_catalog_url, destination_root_catalog_path)
     if os.path.isfile(destination_path):
         print(f"skipping {destination_path}")
-        # TODO: Actually skip
+        with open(destination_path, "r") as destination_file:
+            file_json = json.load(destination_file)
+            return Item.model_validate(file_json)
     asyncio.sleep(REQUEST_WAIT_SECONDS)
     async with AsyncClient() as client:
         response = await client.get(source_item_url)
-    item: Item = Item.model_validate(response.json())
+    item = Item.model_validate(response.json())
     rewrite_links(item, source_item_url)
     # TODO: rewrite links
     write_json(item.model_dump(), destination_path)
