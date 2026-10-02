@@ -35,8 +35,7 @@ def write_json(obj: Dict, file_path: str):
     actual_file_path = Path(file_path)
     actual_file_path.parent.mkdir(parents=True, exist_ok=True)
     with open(actual_file_path, "w") as out_file:
-        # TODO: remove indent
-        json.dump(obj, out_file, indent=2)
+        json.dump(obj, out_file)
 
 
 def to_relative_url(target_url: str, base_url: str) -> str:
