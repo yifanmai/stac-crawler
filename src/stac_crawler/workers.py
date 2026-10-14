@@ -75,7 +75,7 @@ async def worker(queue: asyncio.Queue, output_path: str) -> None:
         queue.task_done()
 
 
-async def run_crawl_workers(catalog_index_path: str, output_path: str, num_workers: int):
+async def run_crawler_workers(catalog_index_path: str, output_path: str, num_workers: int):
     queue = asyncio.Queue()
     for queue_item in get_queue_items(catalog_index_path):
         queue.put_nowait(queue_item)
