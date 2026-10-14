@@ -10,7 +10,7 @@ from urllib.parse import urlparse, urljoin
 from urllib.parse import urljoin
 
 from httpx import AsyncClient
-from stac_crawler.models import CatalogOrCollection, catalog_or_collection, Item, STACObject
+from stac_crawler.models import Collection, CatalogOrCollection, catalog_or_collection, Item, STACObject
 
 
 logger = logging.getLogger(__name__)
@@ -22,6 +22,9 @@ REQUEST_WAIT_SECONDS = 0.2
 
 class CrawlException(Exception):
     pass
+
+
+STAC_INTERNAL_LINK_RELS = ["child", "item", "root", "parent", "collection"]
 
 
 
@@ -145,24 +148,20 @@ async def crawl_catalog_recursively(source_catalog_url: str, source_root_catalog
             await download_and_rewrite_item(source_child_url, source_root_catalog_url, destination_root_catalog_path)
 
 
-STAC_INTERNAL_LINK_RELS = ["child", "item", "root", "parent", "collection"]
+def rewrite_links(stac_object: STACObject, base_object_url: str) -> None:
+    """Given a STAC object, mutate its links so that it can be in a self-contained catalog.
 
-
-def rewrite_links(catalog: STACObject, base_object_url: str) -> None:
-    """Given a catalog, update its links to make it a self-contained catalog.
-
-    Only updates the current catalog; not recursive."""
-    new_links = []
-    for link in catalog.links:
+    Only updates the current STAC object; not recursive."""
+    for link in stac_object.links:
         if link.rel == "self":
             continue
         elif link.rel in STAC_INTERNAL_LINK_RELS:
             link.href = to_relative_url(link.href, base_object_url)
-            new_links.append(link)
         else:
             link.href = to_absolute_url(link.href, base_object_url)
-            new_links.append(link)
-    catalog.links = new_links
+    if isinstance(stac_object, Item) or isinstance(stac_object, Collection):
+        for asset in stac_object.assets:
+            asset.href = to_relative_url(asset.href, base_object_url)
     
 
 async def crawl_root_stac_recursively(source_root_catalog_url: str, destination_root_catalog_path: str) -> None:

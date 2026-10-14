@@ -7,6 +7,11 @@ class Link(BaseModel):
     href: str
     model_config = ConfigDict(extra='allow')
 
+
+class Asset(BaseModel):
+    href: str
+    model_config = ConfigDict(extra='allow')
+
 class Catalog(BaseModel):
     type: Literal["Catalog"] = "Catalog"
     stac_version: str
@@ -21,13 +26,16 @@ class Collection(BaseModel):
     id: str
     description: str
     links: List[Link]
+    assets: List[Asset]
     model_config = ConfigDict(extra='allow')
 
 
 class Item(BaseModel):
     type: Literal["Feature"] = "Feature"
     links: List[Link]
+    assets: List[Asset]
     model_config = ConfigDict(extra='allow')
+
 
 CatalogOrCollection = Annotated[Union[Catalog, Collection], Field(discriminator='type')]
 catalog_or_collection = TypeAdapter(CatalogOrCollection)
