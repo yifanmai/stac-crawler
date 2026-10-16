@@ -29,7 +29,7 @@ class Collection(BaseModel):
     id: str
     description: str
     links: List[Link]
-    assets: Optional[Mapping[str, Asset]]
+    assets: Optional[Mapping[str, Asset]] = Field(default=None)
     model_config = ConfigDict(extra='allow')
 
 

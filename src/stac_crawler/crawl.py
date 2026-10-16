@@ -9,7 +9,7 @@ import os
 import posixpath
 
 from httpx import AsyncClient, HTTPError, Response
-from stac_crawler.models import Collection, CatalogOrCollection, catalog_or_collection, Item, STACObject
+from stac_crawler.models import Collection, CatalogOrCollection, Link, catalog_or_collection, Item, STACObject
 from tenacity import after_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential, wait_random
 
 
@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 
 REQUEST_WAIT_SECONDS = 0.2
 """How long to wait before requests"""
+
+
+CRAWL_TARGET_REL = "crawl-target"
+"""The rel type to use for the crawl-target link."""
 
 
 class CrawlException(Exception):
@@ -33,12 +37,12 @@ def is_absolute_url(url: str) -> bool:
     return bool(parsed_url.scheme) and bool(parsed_url.netloc)
 
 
-def write_json(obj: Dict, file_path: str):
+def write_json(stac_object: STACObject, file_path: str):
     # TODO: make this atomic
     actual_file_path = Path(file_path)
     actual_file_path.parent.mkdir(parents=True, exist_ok=True)
     with open(actual_file_path, "w") as out_file:
-        json.dump(obj, out_file)
+        out_file.write(stac_object.model_dump_json(exclude_unset=True))
 
 
 def to_relative_url(target_url: str, base_url: str) -> str:
@@ -114,7 +118,8 @@ async def download_and_rewrite_catalog(source_catalog_url: str, source_root_cata
         response = await fetch_url_with_retries(urljoin(source_root_catalog_url, source_catalog_url), client)
     catalog = catalog_or_collection.validate_python(response.json())
     rewrite_links(catalog, source_catalog_url)
-    write_json(catalog.model_dump(), destination_path)
+    add_crawl_target(catalog, source_catalog_url)
+    write_json(catalog, destination_path)
     return catalog
 
 
@@ -135,8 +140,8 @@ async def download_and_rewrite_item(source_item_url: str, source_root_catalog_ur
         response = await fetch_url_with_retries(source_item_url, client)
     item = Item.model_validate(response.json())
     rewrite_links(item, source_item_url)
-    # TODO: rewrite links
-    write_json(item.model_dump(), destination_path)
+    add_crawl_target(item, source_item_url)
+    write_json(item, destination_path)
     return item
 
 
@@ -149,9 +154,6 @@ async def crawl_catalog_recursively(source_catalog_url: str, source_root_catalog
     for link in catalog.links:
         if link.rel == "item":
             source_child_url = to_absolute_url(link.href, source_catalog_url)
-            # link_absolute_url = relative_to_absolute_url(link.href, source_path)
-            # link_relative_path_from_base = absolute_to_relative_url(link_absolute_url, source_base)
-            # print(link_relative_path_from_base)
             await download_and_rewrite_item(source_child_url, source_root_catalog_url, destination_root_catalog_path)
 
 
@@ -169,7 +171,12 @@ def rewrite_links(stac_object: STACObject, base_object_url: str) -> None:
     if isinstance(stac_object, Item) or (isinstance(stac_object, Collection) and stac_object.assets is not None):
         for asset in stac_object.assets.values():
             asset.href = to_relative_url(asset.href, base_object_url)
-    
+
+
+def add_crawl_target(stac_object: STACObject, source_object_url: str) -> None:
+    if not any(link.rel == CRAWL_TARGET_REL for link in stac_object.links):
+        stac_object.links.append(Link(rel=CRAWL_TARGET_REL, href=source_object_url))
+
 
 async def crawl_root_stac_recursively(source_root_catalog_url: str, destination_root_catalog_path: str, log_file_path: str) -> None:
     if not source_root_catalog_url.endswith(".json"):

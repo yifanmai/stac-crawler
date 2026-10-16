@@ -1,13 +1,13 @@
 [
   {
-    "id": 169,
-    "url": "https://data.source.coop/planet/disasterdata/catalog.json",
-    "slug": "disaster-data-releases-from-planet-labs-pbc",
-    "title": "Disaster Data Releases from Planet Labs PBC",
-    "summary": "Planet Crisis Response Program imagery for major disaster events \u2014 earthquakes, floods, storms, wildfires and human-made disasters \u2014 as a single browsable STAC / Portolan catalog. Each event is a self-contained sub-catalog with pre- and post-event high-resolution COGs (visual, pansharpened-analytic and usable-data masks), organised by affected location. Imagery \u00a9 Planet Labs PBC, licensed CC-BY-NC-4.0 (non-commercial).",
+    "id": 27,
+    "url": "https://storage.googleapis.com/cfo-public/catalog.json",
+    "slug": "forest-observatory",
+    "title": "California Forest Observatory",
+    "summary": "The Forest Observatory is a data-driven forest monitoring system that maps the drivers of wildfire behavior across the state with a focus on vegetation fuels. Data are available for non-commercial use under the Forest Observatory [terms of use](https://forestobservatory.com/legal.html).",
     "access": "public",
-    "created": "2026-08-18T11:23:12.796Z",
-    "updated": "2026-08-18T11:23:12.796Z",
+    "created": "2021-01-14T17:33:34.176Z",
+    "updated": "2021-01-14T17:33:34.176Z",
     "isPrivate": false,
     "isApi": false,
     "accessInfo": null
