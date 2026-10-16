@@ -1,6 +1,7 @@
-from typing import Annotated, List, Literal, Union
+from typing import Annotated, List, Literal, Mapping, Optional, Union
 
 from pydantic import BaseModel, Field, ConfigDict, TypeAdapter
+
 
 class Link(BaseModel):
     rel: str
@@ -12,6 +13,7 @@ class Asset(BaseModel):
     href: str
     model_config = ConfigDict(extra='allow')
 
+
 class Catalog(BaseModel):
     type: Literal["Catalog"] = "Catalog"
     stac_version: str
@@ -20,20 +22,21 @@ class Catalog(BaseModel):
     links: List[Link]
     model_config = ConfigDict(extra='allow')
 
+
 class Collection(BaseModel):
     type: Literal["Collection"] = "Collection"
     stac_version: str
     id: str
     description: str
     links: List[Link]
-    assets: List[Asset]
+    assets: Optional[Mapping[str, Asset]]
     model_config = ConfigDict(extra='allow')
 
 
 class Item(BaseModel):
     type: Literal["Feature"] = "Feature"
     links: List[Link]
-    assets: List[Asset]
+    assets: Mapping[str, Asset]
     model_config = ConfigDict(extra='allow')
 
 
