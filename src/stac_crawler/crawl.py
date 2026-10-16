@@ -29,11 +29,11 @@ CRAWL_TARGET_REL = "crawl-target"
 """The rel type to use for the crawl-target link."""
 
 
-MAX_ITEM_LINKS = 1000
+MAX_ITEM_LINKS = 5000
 """The maximium number of items permitted within a collection."""
 
 
-MAX_CHILD_LINKS = 100
+MAX_CHILD_LINKS = 500
 """The maximium number of children permitted within a catalog."""
 
 

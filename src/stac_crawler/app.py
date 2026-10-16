@@ -10,7 +10,7 @@ CATALOGS_INDEX_PATH = "./data/catalogs.json"
 STAC_CATALOGS_OUTPUT_PATH = "./output/stac_catalogs/"
 LOGS_OUTPUT_PATH = "./output/logs/"
 CATALOG_INDEX_PATH = "./data/catalogs.json"
-DEFAULT_NUM_WORKERS = 8
+DEFAULT_NUM_WORKERS = 16
 
 
 def main() -> None:
