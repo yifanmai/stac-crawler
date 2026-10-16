@@ -1,16 +1,16 @@
-import logging
+from pathlib import Path
+from typing import Dict
+from urllib.parse import urljoin
+from urllib.parse import urlparse, urljoin
 import asyncio
 import json
+import logging
 import os
-from pathlib import Path
 import posixpath
-from typing import Dict
-from urllib.parse import urlparse, urljoin
 
-from urllib.parse import urljoin
-
-from httpx import AsyncClient
+from httpx import AsyncClient, HTTPError, Response
 from stac_crawler.models import Collection, CatalogOrCollection, catalog_or_collection, Item, STACObject
+from tenacity import after_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential, wait_random
 
 
 logger = logging.getLogger(__name__)
@@ -85,6 +85,13 @@ def to_absolute_url(target_url: str, base_url: str) -> str:
     return urljoin(base_dir_url, target_url)
 
 
+@retry(wait=wait_exponential(multiplier=5) + wait_random(0, 5), stop=stop_after_attempt(3), retry=retry_if_exception_type(HTTPError), reraise=True)
+async def fetch_url_with_retries(url: str, client: AsyncClient) -> Response:
+    response = await client.get(url)
+    response.raise_for_status()
+    return response
+
+
 def get_destination_path(source_object_url: str, source_root_catalog_url: str, destination_root_catalog_path: str):
     source_object_relative_url = to_relative_url(source_object_url, source_root_catalog_url)
     destination_root_directory_path = os.path.split(destination_root_catalog_path)[0]
@@ -104,7 +111,7 @@ async def download_and_rewrite_catalog(source_catalog_url: str, source_root_cata
     await asyncio.sleep(REQUEST_WAIT_SECONDS)
     async with AsyncClient() as client:
         logger.info(f"downloading {source_catalog_url}")
-        response = await client.get(urljoin(source_root_catalog_url, source_catalog_url))
+        response = await fetch_url_with_retries(urljoin(source_root_catalog_url, source_catalog_url), client)
     catalog = catalog_or_collection.validate_python(response.json())
     rewrite_links(catalog, source_catalog_url)
     write_json(catalog.model_dump(), destination_path)
@@ -118,14 +125,14 @@ async def download_and_rewrite_item(source_item_url: str, source_root_catalog_ur
         raise ValueError(f"{source_item_url} was not an absolute URL")
     destination_path = get_destination_path(source_item_url, source_root_catalog_url, destination_root_catalog_path)
     if os.path.isfile(destination_path):
-        # logger.info(f"skipping {source_item_url}")
+        logger.debug(f"skipping {source_item_url}")
         with open(destination_path, "r") as destination_file:
             file_json = json.load(destination_file)
             return Item.model_validate(file_json)
     await asyncio.sleep(REQUEST_WAIT_SECONDS)
     async with AsyncClient() as client:
-        # logger.info(f"downloading {source_item_url}")
-        response = await client.get(source_item_url)
+        logger.debug(f"downloading {source_item_url}")
+        response = await fetch_url_with_retries(source_item_url, client)
     item = Item.model_validate(response.json())
     rewrite_links(item, source_item_url)
     # TODO: rewrite links
@@ -170,4 +177,3 @@ async def crawl_root_stac_recursively(source_root_catalog_url: str, destination_
     if not destination_root_catalog_path.endswith(".json"):
         raise CrawlException(f"Expected destination root catalog path '{destination_root_catalog_path}' to end with .json")
     await crawl_catalog_recursively(source_root_catalog_url, source_root_catalog_url, destination_root_catalog_path)
-
