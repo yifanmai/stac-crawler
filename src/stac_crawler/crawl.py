@@ -24,7 +24,23 @@ CRAWL_TARGET_REL = "crawl-target"
 """The rel type to use for the crawl-target link."""
 
 
+CRAWL_TARGET_REL = "crawl-target"
+"""The rel type to use for the crawl-target link."""
+
+
+MAX_ITEM_LINKS = 1000
+"""The maximium number of items permitted within a collection."""
+
+
+MAX_CHILD_LINKS = 100
+"""The maximium number of children permitted within a catalog."""
+
+
 class CrawlException(Exception):
+    pass
+
+
+class TooManyLinksException(CrawlException):
     pass
 
 
@@ -147,14 +163,25 @@ async def download_and_rewrite_item(source_item_url: str, source_root_catalog_ur
 
 async def crawl_catalog_recursively(source_catalog_url: str, source_root_catalog_url: str, destination_root_catalog_path: str) -> None:
     catalog = await download_and_rewrite_catalog(source_catalog_url, source_root_catalog_url, destination_root_catalog_path)
+    child_links = []
+    item_links = []
     for link in catalog.links:
         if link.rel == "child":
-            source_child_url = to_absolute_url(link.href, source_catalog_url)
-            await crawl_catalog_recursively(source_child_url, source_root_catalog_url, destination_root_catalog_path)
-    for link in catalog.links:
+            child_links.append(link)
         if link.rel == "item":
-            source_child_url = to_absolute_url(link.href, source_catalog_url)
-            await download_and_rewrite_item(source_child_url, source_root_catalog_url, destination_root_catalog_path)
+            item_links.append(link)
+
+    if len(child_links) > MAX_CHILD_LINKS:
+        raise TooManyLinksException(f"Catalog {source_catalog_url} has too many child links ({len(child_links)}); aborting.")
+    if len(item_links) > MAX_ITEM_LINKS:
+        raise TooManyLinksException(f"Catalog {source_catalog_url} has too many item links ({len(item_links)}); aborting.")
+
+    for link in child_links:
+        source_child_url = to_absolute_url(link.href, source_catalog_url)
+        await crawl_catalog_recursively(source_child_url, source_root_catalog_url, destination_root_catalog_path)
+    for link in item_links:
+        source_child_url = to_absolute_url(link.href, source_catalog_url)
+        await download_and_rewrite_item(source_child_url, source_root_catalog_url, destination_root_catalog_path)
 
 
 def rewrite_links(stac_object: STACObject, base_object_url: str) -> None:
