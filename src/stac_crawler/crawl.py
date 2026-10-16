@@ -224,7 +224,7 @@ def rewrite_links(stac_object: STACObject, base_object_url: str) -> None:
             link.href = to_absolute_url(link.href, base_object_url)
     if isinstance(stac_object, Item) or (isinstance(stac_object, Collection) and stac_object.assets is not None):
         for asset in stac_object.assets.values():
-            asset.href = to_relative_url(asset.href, base_object_url)
+            asset.href = to_absolute_url(asset.href, base_object_url)
 
 
 def add_crawl_target(stac_object: STACObject, source_object_url: str) -> None:
