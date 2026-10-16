@@ -232,7 +232,7 @@ def add_crawl_target(stac_object: STACObject, source_object_url: str) -> None:
         stac_object.links.append(Link(rel=CRAWL_TARGET_REL, href=source_object_url))
 
 
-async def crawl_root_catalog_recursively(source_root_catalog_url: str, destination_root_catalog_path: str, log_file_path: str) -> CrawlCatalogStatistics:
+async def crawl_root_catalog_recursively(source_root_catalog_url: str, destination_root_catalog_path: str) -> CrawlCatalogStatistics:
     if not source_root_catalog_url.endswith(".json"):
         raise CrawlException(f"Expected source root catalog path '{source_root_catalog_url}' to end with .json")
     if not destination_root_catalog_path.endswith(".json"):

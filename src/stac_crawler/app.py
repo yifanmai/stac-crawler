@@ -1,6 +1,7 @@
 import argparse
 import logging
 import asyncio
+from pathlib import Path
 
 from stac_crawler.workers import print_crawler_results_json, run_crawler_workers
 
@@ -21,15 +22,14 @@ def main() -> None:
     parser.add_argument("--num-workers", help="Number of concurrent workers", type=int, default=DEFAULT_NUM_WORKERS)
     args = parser.parse_args()
 
+    Path(args.output_path).mkdir(parents=True, exist_ok=True)
+    Path(args.logs_path).mkdir(parents=True, exist_ok=True)
+
     logging.basicConfig(level=logging.INFO)
     logging.getLogger("httpx").setLevel(level=logging.WARNING)
     results = asyncio.run(run_crawler_workers(catalog_index_path=args.catalog_index_path, output_path=args.output_path, logs_path=args.logs_path, num_workers=args.num_workers))
     print_crawler_results_json(results)
-    # print()
-    # print("Done with crawl")
-    # print()
-    # print_crawler_results(results)
-    # print()
+
 
 if __name__ == "__main__":
     main()

@@ -71,21 +71,28 @@ def exception_to_crawl_catalog_error(exception: BaseException) -> CrawlCatalogEr
 async def process_crawl_queue_item(crawl_queue_item: CrawlQueueItem, output_path: str, logs_path: str) -> Dict[str, CrawlCatalogResult]:
     results: Dict[str, CrawlCatalogResult] = {}
     for catalog_link in crawl_queue_item.root_catalog_links:
+        crawl_catalog_result: CrawlCatalogResult
         try:
-            crawl_catalog_result = await process_root_catalog_link(catalog_link, output_path, logs_path)
-            results[catalog_link.slug] = crawl_catalog_result
+            crawl_catalog_result = await process_root_catalog_link(catalog_link, output_path)
+            crawl_catalog_result
         except Exception as e:
-            results[catalog_link.slug] = exception_to_crawl_catalog_error(e)
+            crawl_catalog_result = exception_to_crawl_catalog_error(e)
+        results[catalog_link.slug] = crawl_catalog_result
+        log_file_path = os.path.join(logs_path, f"{catalog_link.slug}.log.json")
+        try:
+            with open(log_file_path, "w") as f:
+                f.write(crawl_catalog_result.model_dump_json(indent=2))
+        except Exception as e:
+            logger.exception(e)
     return results
 
 
-async def process_root_catalog_link(root_catalog_link: RootCatalogLink, output_path: str, logs_path: str) -> CrawlCatalogResult:
+async def process_root_catalog_link(root_catalog_link: RootCatalogLink, output_path: str) -> CrawlCatalogResult:
     if not root_catalog_link.url.endswith(".json"):
         raise Exception(f"Root catalog URL {root_catalog_link} did not end with .json")
     root_catalog_file_name = root_catalog_link.url.split("/")[-1]
     destination_root_catalog_path = os.path.join(output_path, root_catalog_link.slug, root_catalog_file_name)
-    log_file_path = os.path.join(logs_path, f"{root_catalog_link.slug}.log")
-    return await crawl_root_catalog_recursively(root_catalog_link.url, destination_root_catalog_path, log_file_path)
+    return await crawl_root_catalog_recursively(root_catalog_link.url, destination_root_catalog_path)
 
 
 async def worker(queue: asyncio.Queue, output_path: str, logs_path: str) -> None:
