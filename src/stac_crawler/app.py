@@ -6,7 +6,7 @@ from pathlib import Path
 from stac_crawler.workers import print_crawler_results_json, run_crawler_workers
 
 
-CATALOGS_INDEX_PATH = "./data/catalogs_small.json"
+CATALOGS_INDEX_PATH = "./data/catalogs.json"
 STAC_CATALOGS_OUTPUT_PATH = "./output/stac_catalogs/"
 LOGS_OUTPUT_PATH = "./output/logs/"
 CATALOG_INDEX_PATH = "./data/catalogs.json"
