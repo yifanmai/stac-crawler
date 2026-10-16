@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Union
 from urllib.parse import urljoin
 from urllib.parse import urlparse, urljoin
 import asyncio
@@ -9,8 +9,9 @@ import os
 import posixpath
 
 from httpx import AsyncClient, HTTPError, Response
+from pydantic import BaseModel
 from stac_crawler.models import Collection, CatalogOrCollection, Link, catalog_or_collection, Item, STACObject
-from tenacity import after_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential, wait_random
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential, wait_random
 
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,23 @@ class TooManyLinksException(CrawlException):
 
 STAC_INTERNAL_LINK_RELS = ["child", "item", "root", "parent", "collection"]
 
+
+class CrawlCatalogStatistics(BaseModel):
+    num_catalogs: int
+    num_collections: int
+    num_items: int
+
+    def __add__(self, other: "CrawlCatalogStatistics") -> "CrawlCatalogStatistics":
+        return CrawlCatalogStatistics(
+            num_catalogs=self.num_catalogs + other.num_catalogs,
+            num_collections=self.num_collections + other.num_collections,
+            num_items=self.num_items + other.num_items,
+        )
+
+    def __radd__(self, other: "CrawlCatalogStatistics") -> None:
+        self.num_catalogs += other.num_catalogs
+        self.num_collections += other.num_collections
+        self.num_items += other.num_items
 
 
 def is_absolute_url(url: str) -> bool:
@@ -161,8 +179,9 @@ async def download_and_rewrite_item(source_item_url: str, source_root_catalog_ur
     return item
 
 
-async def crawl_catalog_recursively(source_catalog_url: str, source_root_catalog_url: str, destination_root_catalog_path: str) -> None:
+async def crawl_catalog_recursively(source_catalog_url: str, source_root_catalog_url: str, destination_root_catalog_path: str) -> CrawlCatalogStatistics:
     catalog = await download_and_rewrite_catalog(source_catalog_url, source_root_catalog_url, destination_root_catalog_path)
+
     child_links = []
     item_links = []
     for link in catalog.links:
@@ -176,12 +195,20 @@ async def crawl_catalog_recursively(source_catalog_url: str, source_root_catalog
     if len(item_links) > MAX_ITEM_LINKS:
         raise TooManyLinksException(f"Catalog {source_catalog_url} has too many item links ({len(item_links)}); aborting.")
 
+    statistics = CrawlCatalogStatistics(
+        num_catalogs=1,
+        num_collections=1 if isinstance(catalog, Collection) else 0,
+        num_items=len(item_links),
+    )
+
     for link in child_links:
         source_child_url = to_absolute_url(link.href, source_catalog_url)
-        await crawl_catalog_recursively(source_child_url, source_root_catalog_url, destination_root_catalog_path)
+        child_statistics = await crawl_catalog_recursively(source_child_url, source_root_catalog_url, destination_root_catalog_path)
+        statistics += child_statistics
     for link in item_links:
         source_child_url = to_absolute_url(link.href, source_catalog_url)
         await download_and_rewrite_item(source_child_url, source_root_catalog_url, destination_root_catalog_path)
+    return statistics
 
 
 def rewrite_links(stac_object: STACObject, base_object_url: str) -> None:
@@ -205,9 +232,9 @@ def add_crawl_target(stac_object: STACObject, source_object_url: str) -> None:
         stac_object.links.append(Link(rel=CRAWL_TARGET_REL, href=source_object_url))
 
 
-async def crawl_root_stac_recursively(source_root_catalog_url: str, destination_root_catalog_path: str, log_file_path: str) -> None:
+async def crawl_root_catalog_recursively(source_root_catalog_url: str, destination_root_catalog_path: str, log_file_path: str) -> CrawlCatalogStatistics:
     if not source_root_catalog_url.endswith(".json"):
         raise CrawlException(f"Expected source root catalog path '{source_root_catalog_url}' to end with .json")
     if not destination_root_catalog_path.endswith(".json"):
         raise CrawlException(f"Expected destination root catalog path '{destination_root_catalog_path}' to end with .json")
-    await crawl_catalog_recursively(source_root_catalog_url, source_root_catalog_url, destination_root_catalog_path)
+    return await crawl_catalog_recursively(source_root_catalog_url, source_root_catalog_url, destination_root_catalog_path)

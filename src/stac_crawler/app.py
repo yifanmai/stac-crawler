@@ -2,7 +2,7 @@ import argparse
 import logging
 import asyncio
 
-from stac_crawler.workers import run_crawler_workers
+from stac_crawler.workers import print_crawler_results_json, run_crawler_workers
 
 
 CATALOGS_INDEX_PATH = "./data/catalogs_small.json"
@@ -23,7 +23,13 @@ def main() -> None:
 
     logging.basicConfig(level=logging.INFO)
     logging.getLogger("httpx").setLevel(level=logging.WARNING)
-    asyncio.run(run_crawler_workers(catalog_index_path=args.catalog_index_path, output_path=args.output_path, logs_path=args.logs_path, num_workers=args.num_workers))
+    results = asyncio.run(run_crawler_workers(catalog_index_path=args.catalog_index_path, output_path=args.output_path, logs_path=args.logs_path, num_workers=args.num_workers))
+    print_crawler_results_json(results)
+    # print()
+    # print("Done with crawl")
+    # print()
+    # print_crawler_results(results)
+    # print()
 
 if __name__ == "__main__":
     main()
